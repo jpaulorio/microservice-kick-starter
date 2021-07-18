@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gocd-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: gocd-server
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        run: gocd-server
+    spec:
+      securityContext:
+        runAsUser: 0
+        fsGroup: 0
+      volumes:
+      - name: gocd-server-pv-storage
+        persistentVolumeClaim:
+          claimName: gocd-server-pv-claim
+      containers:
+      - image: gocd/gocd-server:v21.2.0
+        imagePullPolicy: IfNotPresent
+        name: gocd-server
+        ports:
+        - containerPort: 8153
+          protocol: TCP
+        volumeMounts:
+        - mountPath: "/godata"
+          name: gocd-server-pv-storage
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      terminationGracePeriodSeconds: 30

@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+  creationTimestamp: "2021-07-05T01:53:37Z"
+  generation: 1
+  name: gocd-agent
+  namespace: default
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      run: gocd-agent
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        run: gocd-agent
+    spec:
+      containers:
+      - image: jpaulorio/gocd-agent-with-maven-gradle:latest
+        imagePullPolicy: Always
+        name: gocd-agent
+        env:
+        - name: GO_SERVER_URL
+          value: http://gocd-server:8153/go
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+          - name: dockerfile-storage
+            mountPath: /workspace
+      - name: kaniko
+        image: jpaulorio/kaniko-with-listener:latest
+        imagePullPolicy: Always
+        volumeMounts:
+          - name: kaniko-secret
+            mountPath: /kaniko/.docker
+          - name: dockerfile-storage
+            mountPath: /workspace  
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: kaniko-secret
+          secret:
+            secretName: regcred
+            items:
+              - key: .dockerconfigjson
+                path: config.json
+        - name: dockerfile-storage
+          persistentVolumeClaim:
+            claimName: dockerfile-claim

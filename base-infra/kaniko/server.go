@@ -17,7 +17,7 @@ const (
 	StopCharacter = "\r\n\r\n"
 )
 
-func SocketServer(port int) {
+func SocketServer(port int) int {
 
 	listen, err := net.Listen("tcp4", ":"+strconv.Itoa(port))
 
@@ -30,18 +30,24 @@ func SocketServer(port int) {
 
 	log.Printf("Begin listen port: %d", port)
 
+	errChan := make(chan error)
+
 	for {
 		conn, err := listen.Accept()
 		if err != nil {
 			log.Fatalln(err)
 			continue
 		}
-		go handler(conn)
+		go handler(conn, errChan)
+
+		if err := <-errChan; err != nil {
+			return -1
+		}
 	}
 
 }
 
-func handler(conn net.Conn) {
+func handler(conn net.Conn, errChan chan error) {
 
 	defer conn.Close()
 
@@ -67,6 +73,7 @@ ILOOP:
 			}
 		default:
 			log.Fatalf("Receive data failed:%s", err)
+			errChan <- err
 			return
 		}
 	}
@@ -88,6 +95,7 @@ ILOOP:
 	if err != nil {
 		log.Println("Error building image.")
 		log.Println(err.Error())
+		errChan <- err
 		return
 	}
 	log.Println("Image built successfully.")
@@ -108,6 +116,6 @@ func main() {
 
 	port := 3333
 
-	SocketServer(port)
+	os.Exit(SocketServer(port))
 
 }

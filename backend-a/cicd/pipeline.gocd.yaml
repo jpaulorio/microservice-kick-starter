@@ -52,7 +52,7 @@ pipelines:
             tasks:
             - fetch:
                 is_file: true
-                source: target/backenda-0.0.1-SNAPSHOT.jar
+                source: target/*.jar
                 destination: workspace
                 pipeline: backend-a
                 stage: build
@@ -68,7 +68,7 @@ pipelines:
             - exec:
                 arguments:
                 - -c
-                - cp workspace/backenda-0.0.1-SNAPSHOT.jar /workspace/${GOCD_PROJECT_NAME}
+                - cp workspace/*.jar /workspace/${GOCD_PROJECT_NAME}
                 command: sh
                 run_if: passed
             - exec:

@@ -1,0 +1,85 @@
+format_version: 10
+pipelines:
+  backend-a:
+    group: apps
+    label_template: ${COUNT}
+    lock_behavior: none
+    display_order: -1
+    materials:
+      backend-a:
+        git: http://gitea:3000/jpsilva/backend-a
+        username: jpsilva
+        shallow_clone: false
+        auto_update: true
+        branch: master
+        encrypted_password: AES:PGgsvPgdWW9ztiKoJEOYZw==:Qw+yx3Enfa2pDtwxnsf6fg==
+    stages:
+    - build:
+        fetch_materials: true
+        keep_artifacts: false
+        clean_workspace: false
+        approval:
+          type: success
+          allow_only_on_success: false
+        jobs:
+          compile:
+            timeout: 0
+            artifacts:
+            - build:
+                source: target
+                destination: ''
+            tasks:
+            - exec:
+                arguments:
+                - clean
+                - package
+                command: mvn
+                run_if: passed
+    - build-image:
+        fetch_materials: true
+        keep_artifacts: false
+        clean_workspace: false
+        approval:
+          type: success
+          allow_only_on_success: false
+        jobs:
+          build-image:
+            timeout: 0
+            environment_variables:
+              GOCD_PROJECT_NAME: backend-a
+              GOCD_CONTAINER_REGISTRY: jpaulorio
+              GOCD_ENVIRONMENT: dev
+            tasks:
+            - fetch:
+                is_file: true
+                source: target/backenda-0.0.1-SNAPSHOT.jar
+                destination: workspace
+                pipeline: backend-a
+                stage: build
+                job: compile
+                artifact_origin: gocd
+                run_if: passed
+            - exec:
+                arguments:
+                - -c
+                - mkdir -p /workspace/${GOCD_PROJECT_NAME}
+                command: sh
+                run_if: passed
+            - exec:
+                arguments:
+                - -c
+                - cp workspace/backenda-0.0.1-SNAPSHOT.jar /workspace/${GOCD_PROJECT_NAME}
+                command: sh
+                run_if: passed
+            - exec:
+                arguments:
+                - -c
+                - cp infra/Dockerfile /workspace/$GOCD_PROJECT_NAME
+                command: sh
+                run_if: passed
+            - exec:
+                arguments:
+                - run
+                - /client.go
+                command: /usr/local/go/bin/go
+                run_if: passed
